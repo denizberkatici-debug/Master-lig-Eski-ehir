@@ -1,0 +1,581 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Halısaha Ligi</title>
+
+<!-- ====== BURAYI DOLDUR (Supabase Ayarları) ======
+  1) https://supabase.com adresinde ücretsiz hesap aç, "New Project" oluştur.
+  2) Sol menüden "SQL Editor" -> aşağıdaki SQL'i çalıştır:
+
+     create table league_data (
+       id text primary key,
+       data jsonb,
+       updated_at timestamptz default now()
+     );
+     insert into league_data (id, data) values ('main', '{}');
+     alter table league_data enable row level security;
+     create policy "allow anon read" on league_data for select using (true);
+     create policy "allow anon update" on league_data for update using (true);
+
+  3) Sol menüden Settings -> API -> "Project URL" ve "anon public" anahtarını kopyala.
+  4) Aşağıdaki satırlara yapıştır. EDIT_PASSWORD'ü de istediğin bir şifreyle değiştir.
+========================================================= -->
+<script>
+  window.SUPABASE_URL = "https://dmbgkicrpvzqdunbyzzc.supabase.co";
+  window.SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRtYmdraWNycHZ6cWR1bmJ5ZnpjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQwNTAxMTQsImV4cCI6MjA5OTYyNjExNH0.8fQRdoErkR9taJ0-SmHq0BLat0ykBy9bT0li7XG6u1A";
+  window.EDIT_PASSWORD = "2642";
+</script>
+
+<style>
+  :root { color-scheme: dark; }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    background: radial-gradient(ellipse at top, #114935 0%, #0B3D2E 45%, #082A1F 100%);
+    color: #F3F1E7;
+    min-height: 100vh;
+  }
+  .disp { font-family: Georgia, 'Times New Roman', serif; text-transform: uppercase; letter-spacing: 0.02em; }
+  .tabnums { font-variant-numeric: tabular-nums; }
+  .wrap { max-width: 900px; margin: 0 auto; padding: 0 16px; }
+  header { border-bottom: 1px solid rgba(255,178,56,0.2); background-image: repeating-linear-gradient(90deg, rgba(255,255,255,0.035) 0px, rgba(255,255,255,0.035) 1px, transparent 1px, transparent 64px); }
+  .top-row { padding-top: 24px; padding-bottom: 16px; display:flex; align-items:flex-start; justify-content:space-between; gap:12px; }
+  .title { display:flex; align-items:center; gap:8px; font-size:26px; font-weight:700; margin:0; }
+  .subtitle { font-size:12px; color: rgba(243,241,231,0.55); margin: 4px 0 0; }
+  .edit-btn { display:flex; align-items:center; gap:6px; padding:8px 12px; border-radius:8px; font-size:12px; border:none; cursor:pointer; background: rgba(245,243,231,0.08); color:#F3F1E7; flex-shrink:0; }
+  .edit-btn.active { background:#FFB238; color:#082A1F; font-weight:600; }
+  nav.tabs { display:flex; gap:4px; overflow-x:auto; padding-bottom:12px; }
+  .tab-btn { display:flex; align-items:center; gap:6px; padding:8px 14px; border-radius:8px; font-size:14px; white-space:nowrap; background:none; border:1px solid transparent; color: rgba(243,241,231,0.6); cursor:pointer; }
+  .tab-btn.active { background:#0B3D2E; color:#FFB238; border:1px solid rgba(255,178,56,0.4); }
+  .ticker-wrap { overflow:hidden; background:#062318; border-top:1px solid rgba(255,178,56,0.25); border-bottom:1px solid rgba(255,178,56,0.25); padding:7px 0; }
+  .ticker-track { display:flex; width:max-content; animation: ticker-scroll 22s linear infinite; }
+  .ticker-text { font-family: monospace; font-size:13px; letter-spacing:0.12em; color:#FFB238; text-shadow:0 0 6px rgba(255,178,56,0.55); padding-right:60px; white-space:nowrap; }
+  @keyframes ticker-scroll { from{transform:translateX(0);} to{transform:translateX(-50%);} }
+  @media (prefers-reduced-motion: reduce) { .ticker-track { animation:none; } }
+  main { padding: 24px 16px; }
+  .panel { background: linear-gradient(180deg, #0F4A34 0%, #0B3D2E 100%); border:1px solid rgba(245,243,231,0.08); border-radius:10px; margin-bottom:16px; }
+  .empty { text-align:center; padding:56px 24px; }
+  .empty .icon { font-size:28px; opacity:0.4; }
+  .empty .title2 { margin-top:12px; font-weight:600; }
+  .empty .hint { margin-top:4px; font-size:13px; color: rgba(243,241,231,0.5); }
+  table { border-collapse:collapse; width:100%; }
+  th { text-align:left; font-size:11px; letter-spacing:0.08em; color:rgba(243,241,231,0.5); font-weight:600; padding:8px 10px; }
+  td { padding:10px; font-size:14px; border-top:1px solid rgba(245,243,231,0.06); }
+  tr:hover td { background: rgba(255,255,255,0.02); }
+  input, select {
+    background: rgba(6,35,24,0.6); border:1px solid rgba(245,243,231,0.18); color:#F3F1E7;
+    border-radius:6px; padding:6px 10px; font-size:13px; outline:none; font-family:inherit;
+  }
+  input:focus, select:focus { border-color:#FFB238; box-shadow:0 0 0 2px rgba(255,178,56,0.2); }
+  button { font-family:inherit; }
+  button:focus-visible, [tabindex]:focus-visible, input:focus-visible, select:focus-visible { outline:2px solid #FFB238; outline-offset:2px; }
+  .btn-amber { background:#FFB238; color:#082A1F; font-weight:600; border:none; border-radius:8px; padding:9px 14px; display:inline-flex; align-items:center; gap:6px; cursor:pointer; font-size:14px; }
+  .btn-amber:hover { background:#ffc35f; }
+  .btn-ghost { background:transparent; border:1px solid rgba(245,243,231,0.25); color:#F3F1E7; border-radius:8px; padding:6px 8px; cursor:pointer; display:inline-flex; align-items:center; gap:6px; }
+  .btn-ghost:hover { border-color:#FFB238; color:#FFB238; }
+  .swatch { width:10px; height:10px; border-radius:3px; display:inline-block; }
+  .team-row { display:flex; align-items:center; gap:8px; font-weight:600; }
+  .match-row { padding:12px 16px; display:flex; align-items:center; gap:12px; flex-wrap:wrap; border-top:1px solid rgba(245,243,231,0.06); }
+  .match-row:first-child { border-top:none; }
+  .match-center { flex:1; display:flex; align-items:center; justify-content:center; gap:12px; min-width:220px; }
+  .footer-row { display:flex; align-items:center; justify-content:space-between; font-size:12px; color: rgba(243,241,231,0.35); padding: 8px 0 32px; }
+  .team-header { width:100%; display:flex; align-items:center; justify-content:space-between; padding:14px 16px; background:none; border:none; color:#F3F1E7; cursor:pointer; text-align:left; }
+  .team-body { padding: 0 16px 16px; }
+  .config-warning { background:#7a2b2b; color:#fff; font-size:13px; padding:8px 16px; text-align:center; }
+  .chip { font-size:12px; padding:2px 8px; border-radius:6px; background: rgba(255,178,56,0.15); color:#FFB238; }
+</style>
+</head>
+<body>
+<div id="root">
+  <div style="min-height:100vh;display:flex;align-items:center;justify-content:center;text-align:center;padding:20px;font-size:14px;">
+    Saha ışıkları yakılıyor…
+  </div>
+</div>
+
+<script>
+(function () {
+  "use strict";
+
+  var TEAM_COLORS = ["#FFB238", "#5FB0FF", "#FF6B6B", "#8CE99A", "#D5A6FF", "#FFD93D"];
+  function uid(p) { return p + Math.random().toString(36).slice(2, 9); }
+  function esc(s) {
+    return String(s == null ? "" : s).replace(/[&<>"']/g, function (c) {
+      return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c];
+    });
+  }
+
+  function seedData() {
+    return {
+      leagueName: "Salı Akşamı Halısaha Ligi",
+      season: "2026 Yaz Sezonu",
+      teams: [
+        { id: "t1", name: "Kartallar SK", color: TEAM_COLORS[0], players: [
+          { id: "p1", name: "Emre Yıldız", number: 9, goals: 6 },
+          { id: "p2", name: "Barış Kaya", number: 7, goals: 2 } ] },
+        { id: "t2", name: "Rüzgar United", color: TEAM_COLORS[1], players: [
+          { id: "p3", name: "Deniz Aydın", number: 10, goals: 4 },
+          { id: "p4", name: "Onur Şahin", number: 4, goals: 1 } ] },
+        { id: "t3", name: "Demir Çelik FC", color: TEAM_COLORS[2], players: [
+          { id: "p5", name: "Kerem Doğan", number: 11, goals: 5 },
+          { id: "p6", name: "Tolga Er", number: 5, goals: 0 } ] },
+        { id: "t4", name: "Panter FK", color: TEAM_COLORS[3], players: [
+          { id: "p7", name: "Yusuf Acar", number: 8, goals: 3 },
+          { id: "p8", name: "Mert Polat", number: 2, goals: 1 } ] },
+      ],
+      matches: [
+        { id: "m1", week: 1, date: "2026-07-01", homeTeamId: "t1", awayTeamId: "t2", homeScore: 4, awayScore: 2, played: true },
+        { id: "m2", week: 1, date: "2026-07-01", homeTeamId: "t3", awayTeamId: "t4", homeScore: 3, awayScore: 3, played: true },
+        { id: "m3", week: 2, date: "2026-07-08", homeTeamId: "t1", awayTeamId: "t3", homeScore: 2, awayScore: 1, played: true },
+        { id: "m4", week: 2, date: "2026-07-08", homeTeamId: "t2", awayTeamId: "t4", homeScore: 1, awayScore: 1, played: true },
+        { id: "m5", week: 3, date: "2026-07-15", homeTeamId: "t1", awayTeamId: "t4", homeScore: null, awayScore: null, played: false },
+        { id: "m6", week: 3, date: "2026-07-15", homeTeamId: "t2", awayTeamId: "t3", homeScore: null, awayScore: null, played: false },
+      ],
+    };
+  }
+
+  /* ---------------- Supabase REST (doğrudan fetch, ekstra kütüphane yok) ---------------- */
+
+  function supabaseConfigured() {
+    return window.SUPABASE_URL && window.SUPABASE_URL !== "BURAYA_PROJE_URL" &&
+           window.SUPABASE_ANON_KEY && window.SUPABASE_ANON_KEY !== "BURAYA_ANON_KEY";
+  }
+
+  function supabaseHeaders(extra) {
+    var h = {
+      "apikey": window.SUPABASE_ANON_KEY,
+      "Authorization": "Bearer " + window.SUPABASE_ANON_KEY,
+      "Content-Type": "application/json",
+    };
+    if (extra) for (var k in extra) h[k] = extra[k];
+    return h;
+  }
+
+  function loadRemoteData() {
+    var url = window.SUPABASE_URL + "/rest/v1/league_data?id=eq.main&select=data";
+    return fetch(url, { headers: supabaseHeaders() })
+      .then(function (res) { if (!res.ok) throw new Error("load failed: " + res.status); return res.json(); })
+      .then(function (rows) {
+        if (rows && rows[0] && rows[0].data && Object.keys(rows[0].data).length > 0) return rows[0].data;
+        return null;
+      });
+  }
+
+  function saveRemoteData(next) {
+    var url = window.SUPABASE_URL + "/rest/v1/league_data?id=eq.main";
+    return fetch(url, {
+      method: "PATCH",
+      headers: supabaseHeaders({ "Prefer": "return=minimal" }),
+      body: JSON.stringify({ data: next, updated_at: new Date().toISOString() }),
+    }).then(function (res) { if (!res.ok) throw new Error("save failed: " + res.status); return true; });
+  }
+
+  /* ---------------- Uygulama durumu ---------------- */
+
+  var state = {
+    data: null,
+    editMode: false,
+    tab: "standings",
+    openTeamId: null,
+    configOk: true,
+    saveTimer: null,
+  };
+
+  function scheduleSave() {
+    var el = document.getElementById("save-state");
+    if (el) el.textContent = "Kaydediliyor…";
+    if (state.saveTimer) clearTimeout(state.saveTimer);
+    state.saveTimer = setTimeout(function () {
+      if (!state.configOk) return;
+      saveRemoteData(state.data).then(function () {
+        var e = document.getElementById("save-state");
+        if (e) e.textContent = "Kaydedildi ✓";
+        setTimeout(function () { var e2 = document.getElementById("save-state"); if (e2) e2.textContent = ""; }, 1500);
+      }).catch(function () {
+        var e = document.getElementById("save-state");
+        if (e) e.textContent = "Kaydetme hatası";
+      });
+    }, 700);
+    refreshTicker();
+  }
+
+  /* ---------------- Hesaplamalar ---------------- */
+
+  function computeStandings(data) {
+    var table = {};
+    data.teams.forEach(function (t) { table[t.id] = { team: t, P: 0, W: 0, D: 0, L: 0, GF: 0, GA: 0, GD: 0, Pts: 0 }; });
+    data.matches.forEach(function (m) {
+      if (!m.played || m.homeScore == null || m.awayScore == null) return;
+      var h = table[m.homeTeamId], a = table[m.awayTeamId];
+      if (!h || !a) return;
+      h.P++; a.P++; h.GF += m.homeScore; h.GA += m.awayScore; a.GF += m.awayScore; a.GA += m.homeScore;
+      if (m.homeScore > m.awayScore) { h.W++; h.Pts += 3; a.L++; }
+      else if (m.homeScore < m.awayScore) { a.W++; a.Pts += 3; h.L++; }
+      else { h.D++; a.D++; h.Pts++; a.Pts++; }
+    });
+    var list = Object.keys(table).map(function (k) { var r = table[k]; r.GD = r.GF - r.GA; return r; });
+    list.sort(function (a, b) { return (b.Pts - a.Pts) || (b.GD - a.GD) || (b.GF - a.GF); });
+    return list;
+  }
+
+  function computeTopScorers(data) {
+    var list = [];
+    data.teams.forEach(function (t) {
+      t.players.forEach(function (p) { list.push({ id: p.id, name: p.name, number: p.number, goals: p.goals, teamName: t.name, teamColor: t.color }); });
+    });
+    return list.filter(function (p) { return p.goals > 0; }).sort(function (a, b) { return b.goals - a.goals; }).slice(0, 15);
+  }
+
+  function tickerText(data) {
+    var standings = computeStandings(data);
+    var scorers = computeTopScorers(data);
+    var next = data.matches.filter(function (m) { return !m.played; })[0];
+    var teamName = function (id) { var t = data.teams.filter(function (x) { return x.id === id; })[0]; return t ? t.name : "?"; };
+    var parts = [];
+    if (next) parts.push("SIRADAKİ MAÇ — " + teamName(next.homeTeamId) + " vs " + teamName(next.awayTeamId) + " — HAFTA " + next.week);
+    if (scorers[0]) parts.push("GOL KRALI — " + scorers[0].name + " (" + scorers[0].goals + " GOL)");
+    if (standings[0] && standings[0].team) parts.push("LİDER — " + standings[0].team.name + " (" + standings[0].Pts + " PUAN)");
+    return parts.join("    •    ") || "HALISAHA LİGİNE HOŞ GELDİN";
+  }
+
+  function refreshTicker() {
+    var el = document.getElementById("ticker-text-a");
+    var el2 = document.getElementById("ticker-text-b");
+    if (!el || !el2 || !state.data) return;
+    var t = tickerText(state.data);
+    el.textContent = t;
+    el2.textContent = t;
+  }
+
+  /* ---------------- Render: sekmeler ---------------- */
+
+  function renderStandings(data) {
+    var standings = computeStandings(data);
+    if (standings.length === 0) {
+      return '<div class="panel"><div class="empty"><div class="icon">🏆</div><div class="title2">Henüz takım yok</div><div class="hint">Takımlar sekmesinden takım ekleyerek başla.</div></div></div>';
+    }
+    var rows = standings.map(function (r, i) {
+      var gd = r.GD > 0 ? "+" + r.GD : r.GD;
+      return '<tr>' +
+        '<td class="tabnums" style="color:rgba(243,241,231,0.5)">' + (i + 1) + '</td>' +
+        '<td><div class="team-row"><span class="swatch" style="background:' + r.team.color + '"></span>' + esc(r.team.name) + '</div></td>' +
+        '<td class="tabnums" style="text-align:center">' + r.P + '</td>' +
+        '<td class="tabnums" style="text-align:center">' + r.W + '</td>' +
+        '<td class="tabnums" style="text-align:center">' + r.D + '</td>' +
+        '<td class="tabnums" style="text-align:center">' + r.L + '</td>' +
+        '<td class="tabnums" style="text-align:center">' + r.GF + '</td>' +
+        '<td class="tabnums" style="text-align:center">' + r.GA + '</td>' +
+        '<td class="tabnums" style="text-align:center">' + gd + '</td>' +
+        '<td class="tabnums disp" style="text-align:center;font-weight:700;color:#FFB238">' + r.Pts + '</td>' +
+        '</tr>';
+    }).join("");
+    return '<div class="panel"><div style="overflow-x:auto"><table><thead><tr>' +
+      '<th>#</th><th>Takım</th><th style="text-align:center">O</th><th style="text-align:center">G</th><th style="text-align:center">B</th>' +
+      '<th style="text-align:center">M</th><th style="text-align:center">A</th><th style="text-align:center">Y</th><th style="text-align:center">AV</th><th style="text-align:center">Puan</th>' +
+      '</tr></thead><tbody>' + rows + '</tbody></table></div></div>';
+  }
+
+  function renderFixtures(data, editMode) {
+    var teamName = function (id) { var t = data.teams.filter(function (x) { return x.id === id; })[0]; return t ? t.name : "—"; };
+    var teamColor = function (id) { var t = data.teams.filter(function (x) { return x.id === id; })[0]; return t ? t.color : "#888"; };
+    var weeks = [];
+    data.matches.forEach(function (m) { if (weeks.indexOf(m.week) === -1) weeks.push(m.week); });
+    weeks.sort(function (a, b) { return a - b; });
+
+    var addBtn = editMode ? '<button class="btn-amber disp" data-action="add-match">➕ Maç Ekle</button>' : "";
+
+    if (data.matches.length === 0) {
+      if (editMode) return addBtn + '<div class="panel"><div style="padding:24px">' + '</div></div>';
+      return '<div class="panel"><div class="empty"><div class="icon">📅</div><div class="title2">Fikstür boş</div><div class="hint">Düzenleme modunu açıp maç ekleyebilirsin.</div></div></div>';
+    }
+
+    var weekPanels = weeks.map(function (w) {
+      var rows = data.matches.filter(function (m) { return m.week === w; }).map(function (m) {
+        if (!editMode) {
+          var scoreText = m.played ? (m.homeScore + " – " + m.awayScore) : "vs";
+          var notPlayed = !m.played ? '<span class="chip">Oynanmadı</span>' : "";
+          return '<div class="match-row">' +
+            '<span class="tabnums" style="font-size:12px;color:rgba(243,241,231,0.45);min-width:78px">' + esc(m.date) + '</span>' +
+            '<div class="match-center">' +
+              '<span style="display:flex;align-items:center;gap:6px;font-weight:500;font-size:14px;justify-content:flex-end;flex:1;text-align:right">' + esc(teamName(m.homeTeamId)) + '<span class="swatch" style="background:' + teamColor(m.homeTeamId) + '"></span></span>' +
+              '<span class="disp tabnums" style="font-size:18px;font-weight:700;padding:0 8px;color:' + (m.played ? "#F3F1E7" : "rgba(243,241,231,0.35)") + '">' + scoreText + '</span>' +
+              '<span style="display:flex;align-items:center;gap:6px;font-weight:500;font-size:14px;flex:1"><span class="swatch" style="background:' + teamColor(m.awayTeamId) + '"></span>' + esc(teamName(m.awayTeamId)) + '</span>' +
+            '</div>' + notPlayed +
+          '</div>';
+        }
+        var teamOptions = function (selected) {
+          return data.teams.map(function (t) { return '<option value="' + t.id + '" ' + (t.id === selected ? "selected" : "") + '>' + esc(t.name) + '</option>'; }).join("");
+        };
+        var weekOptions = [];
+        for (var i = 1; i <= 20; i++) weekOptions.push('<option value="' + i + '" ' + (i === m.week ? "selected" : "") + '>Hafta ' + i + '</option>');
+        return '<div class="match-row" data-match-id="' + m.id + '">' +
+          '<input type="date" data-field="date" value="' + esc(m.date) + '" style="width:130px" />' +
+          '<select data-field="week" style="width:90px">' + weekOptions.join("") + '</select>' +
+          '<select data-field="homeTeamId" style="min-width:120px">' + teamOptions(m.homeTeamId) + '</select>' +
+          '<input type="number" min="0" data-field="homeScore" value="' + (m.homeScore == null ? "" : m.homeScore) + '" placeholder="-" style="width:48px;text-align:center" />' +
+          '<span style="color:rgba(243,241,231,0.4)">–</span>' +
+          '<input type="number" min="0" data-field="awayScore" value="' + (m.awayScore == null ? "" : m.awayScore) + '" placeholder="-" style="width:48px;text-align:center" />' +
+          '<select data-field="awayTeamId" style="min-width:120px">' + teamOptions(m.awayTeamId) + '</select>' +
+          '<label style="display:flex;align-items:center;gap:6px;font-size:12px;color:rgba(243,241,231,0.6)"><input type="checkbox" data-field="played" ' + (m.played ? "checked" : "") + ' style="width:auto" /> Oynandı</label>' +
+          '<button class="btn-ghost" data-action="delete-match" data-id="' + m.id + '" style="margin-left:auto" aria-label="Maçı sil">🗑️</button>' +
+        '</div>';
+      }).join("");
+      return '<div class="panel"><div style="padding:12px 16px 4px"><span class="disp" style="font-size:14px;font-weight:600;color:#FFB238">' + w + '. Hafta</span></div>' + rows + '</div>';
+    }).join("");
+
+    return '<div>' + addBtn + weekPanels + '</div>';
+  }
+
+  function renderTeams(data, editMode) {
+    var addBtn = editMode ? '<button class="btn-amber disp" data-action="add-team">➕ Takım Ekle</button>' : "";
+    if (data.teams.length === 0) {
+      if (editMode) return '<div class="panel"><div style="padding:24px">' + addBtn + '</div></div>';
+      return '<div class="panel"><div class="empty"><div class="icon">👥</div><div class="title2">Henüz takım yok</div><div class="hint">Düzenleme modunu açıp ilk takımı ekleyebilirsin.</div></div></div>';
+    }
+    var teamsHtml = data.teams.map(function (team) {
+      var isOpen = state.openTeamId === team.id;
+      var nameHtml = editMode
+        ? '<input data-field="name" data-team-id="' + team.id + '" value="' + esc(team.name) + '" style="min-width:160px" onclick="event.stopPropagation()" />'
+        : '<span class="disp" style="font-weight:600;font-size:18px">' + esc(team.name) + '</span>';
+      var deleteBtn = editMode ? '<span class="btn-ghost" data-action="delete-team" data-id="' + team.id + '" role="button" aria-label="Takımı sil" onclick="event.stopPropagation()">🗑️</span>' : "";
+      var body = "";
+      if (isOpen) {
+        var playerRows = team.players.map(function (p) {
+          if (editMode) {
+            return '<tr>' +
+              '<td class="tabnums"><input type="number" data-field="number" data-team-id="' + team.id + '" data-player-id="' + p.id + '" value="' + p.number + '" style="width:48px;text-align:center" /></td>' +
+              '<td><input data-field="pname" data-team-id="' + team.id + '" data-player-id="' + p.id + '" value="' + esc(p.name) + '" style="min-width:140px" /></td>' +
+              '<td style="text-align:center" class="tabnums"><input type="number" data-field="goals" data-team-id="' + team.id + '" data-player-id="' + p.id + '" value="' + p.goals + '" style="width:48px;text-align:center" /></td>' +
+              '<td><button class="btn-ghost" data-action="delete-player" data-team-id="' + team.id + '" data-player-id="' + p.id + '" aria-label="Oyuncuyu sil" style="padding:4px">🗑️</button></td>' +
+            '</tr>';
+          }
+          return '<tr><td class="tabnums">' + p.number + '</td><td>' + esc(p.name) + '</td>' +
+            '<td style="text-align:center" class="tabnums"><span style="font-weight:600;color:#FFB238">' + p.goals + '</span></td></tr>';
+        }).join("");
+        var emptyPlayers = team.players.length === 0 ? '<p style="font-size:12px;color:rgba(243,241,231,0.4);padding:12px 0">Kadroda henüz oyuncu yok.</p>' : "";
+        var addPlayerBtn = editMode ? '<button class="btn-ghost" data-action="add-player" data-team-id="' + team.id + '" style="margin-top:8px;font-size:12px">➕ Oyuncu Ekle</button>' : "";
+        body = '<div class="team-body"><table><thead><tr><th style="width:50px">No</th><th>Oyuncu</th><th style="text-align:center;width:70px">Gol</th>' + (editMode ? '<th style="width:40px"></th>' : '') + '</tr></thead><tbody>' + playerRows + '</tbody></table>' + emptyPlayers + addPlayerBtn + '</div>';
+      }
+      return '<div class="panel">' +
+        '<button class="team-header" data-action="toggle-team" data-id="' + team.id + '">' +
+          '<div style="display:flex;align-items:center;gap:12px"><span class="swatch" style="width:12px;height:12px;background:' + team.color + '"></span>' + nameHtml +
+          '<span style="font-size:12px;color:rgba(243,241,231,0.45)">' + team.players.length + ' oyuncu</span></div>' +
+          '<div style="display:flex;align-items:center;gap:8px">' + deleteBtn + '<span style="color:rgba(243,241,231,0.5);display:inline-block;transform:' + (isOpen ? "rotate(90deg)" : "none") + '">▶</span></div>' +
+        '</button>' + body +
+      '</div>';
+    }).join("");
+    return '<div>' + addBtn + teamsHtml + '</div>';
+  }
+
+  function renderScorers(data) {
+    var scorers = computeTopScorers(data);
+    if (scorers.length === 0) {
+      return '<div class="panel"><div class="empty"><div class="icon">⚽</div><div class="title2">Henüz gol yok</div><div class="hint">Takımlar sekmesinden oyunculara gol ekleyebilirsin.</div></div></div>';
+    }
+    var rows = scorers.map(function (p, i) {
+      return '<div class="match-row" style="border-top:' + (i === 0 ? "none" : "1px solid rgba(245,243,231,0.06)") + '">' +
+        '<span class="disp tabnums" style="font-size:14px;width:24px;text-align:center;color:' + (i < 3 ? "#FFB238" : "rgba(243,241,231,0.4)") + '">' + (i + 1) + '</span>' +
+        '<span class="swatch" style="background:' + p.teamColor + '"></span>' +
+        '<div style="flex:1"><div style="font-weight:500;font-size:14px">' + esc(p.name) + '</div><div style="font-size:12px;color:rgba(243,241,231,0.45)">' + esc(p.teamName) + ' · #' + p.number + '</div></div>' +
+        '<div class="disp tabnums" style="font-size:20px;font-weight:700;color:#FFB238">' + p.goals + '</div>' +
+      '</div>';
+    }).join("");
+    return '<div class="panel">' + rows + '</div>';
+  }
+
+  /* ---------------- Ana render ---------------- */
+
+  function render() {
+    var data = state.data;
+    var editMode = state.editMode;
+
+    var configWarning = state.configOk ? "" :
+      '<div class="config-warning">Supabase bağlantısı ayarlanmadı — veriler kaydedilmiyor. index.html içindeki SUPABASE_URL / SUPABASE_ANON_KEY alanlarını doldur.</div>';
+
+    var tabs = [
+      { id: "standings", label: "Puan Durumu", icon: "🏆" },
+      { id: "fixtures", label: "Fikstür", icon: "📅" },
+      { id: "teams", label: "Takımlar", icon: "👥" },
+      { id: "scorers", label: "Gol Kralı", icon: "⚽" },
+    ];
+    var tabsHtml = tabs.map(function (t) {
+      var cls = "tab-btn" + (state.tab === t.id ? " active" : "");
+      return '<button class="' + cls + '" data-action="set-tab" data-tab="' + t.id + '">' + t.icon + ' <span class="disp">' + t.label + '</span></button>';
+    }).join("");
+
+    var mainHtml = "";
+    if (state.tab === "standings") mainHtml = renderStandings(data);
+    else if (state.tab === "fixtures") mainHtml = renderFixtures(data, editMode);
+    else if (state.tab === "teams") mainHtml = renderTeams(data, editMode);
+    else if (state.tab === "scorers") mainHtml = renderScorers(data);
+
+    var t = tickerText(data);
+
+    var html =
+      configWarning +
+      '<header><div class="wrap top-row">' +
+        '<div><h1 class="title disp">🛡️ ' + esc(data.leagueName) + '</h1><p class="subtitle">' + esc(data.season) + '</p></div>' +
+        '<button class="edit-btn' + (editMode ? " active" : "") + '" data-action="toggle-edit">' + (editMode ? "🔓 Düzenleme Açık" : "🔒 Düzenle") + '</button>' +
+      '</div><nav class="tabs wrap">' + tabsHtml + '</nav></header>' +
+      '<div class="ticker-wrap"><div class="ticker-track"><span class="ticker-text" id="ticker-text-a">' + esc(t) + '</span><span class="ticker-text" id="ticker-text-b">' + esc(t) + '</span></div></div>' +
+      '<main class="wrap">' + mainHtml + '</main>' +
+      '<div class="wrap footer-row"><span>Halısaha Ligi Yönetim Paneli</span><span class="tabnums" id="save-state"></span></div>';
+
+    document.getElementById("root").innerHTML = html;
+    attachHandlers();
+  }
+
+  /* ---------------- Olay yönetimi ---------------- */
+
+  function findMatch(id) { return state.data.matches.filter(function (m) { return m.id === id; })[0]; }
+  function findTeam(id) { return state.data.teams.filter(function (t) { return t.id === id; })[0]; }
+
+  function attachHandlers() {
+    var root = document.getElementById("root");
+
+    root.querySelectorAll('[data-action]').forEach(function (el) {
+      el.addEventListener("click", function (e) {
+        var action = el.getAttribute("data-action");
+        if (action === "set-tab") { state.tab = el.getAttribute("data-tab"); render(); }
+        else if (action === "toggle-edit") { onToggleEdit(); }
+        else if (action === "add-match") { onAddMatch(); }
+        else if (action === "delete-match") { onDeleteMatch(el.getAttribute("data-id")); }
+        else if (action === "add-team") { onAddTeam(); }
+        else if (action === "delete-team") { onDeleteTeam(el.getAttribute("data-id")); }
+        else if (action === "toggle-team") {
+          var id = el.getAttribute("data-id");
+          state.openTeamId = state.openTeamId === id ? null : id;
+          render();
+        }
+        else if (action === "add-player") { onAddPlayer(el.getAttribute("data-team-id")); }
+        else if (action === "delete-player") { onDeletePlayer(el.getAttribute("data-team-id"), el.getAttribute("data-player-id")); }
+      });
+    });
+
+    // Fikstür satırı düzenleme alanları
+    root.querySelectorAll('.match-row[data-match-id] [data-field]').forEach(function (el) {
+      var evt = (el.tagName === "SELECT" || el.type === "checkbox" || el.type === "date") ? "change" : "input";
+      el.addEventListener(evt, function () {
+        var row = el.closest(".match-row");
+        var m = findMatch(row.getAttribute("data-match-id"));
+        if (!m) return;
+        var field = el.getAttribute("data-field");
+        if (field === "played") m.played = el.checked;
+        else if (field === "week") m.week = Number(el.value);
+        else if (field === "homeScore" || field === "awayScore") m[field] = el.value === "" ? null : Number(el.value);
+        else m[field] = el.value;
+        scheduleSave();
+      });
+    });
+
+    // Takım adı
+    root.querySelectorAll('input[data-field="name"]').forEach(function (el) {
+      el.addEventListener("input", function () {
+        var team = findTeam(el.getAttribute("data-team-id"));
+        if (team) { team.name = el.value; scheduleSave(); }
+      });
+    });
+
+    // Oyuncu alanları
+    root.querySelectorAll('input[data-field="pname"], input[data-field="number"], input[data-field="goals"]').forEach(function (el) {
+      el.addEventListener("input", function () {
+        var team = findTeam(el.getAttribute("data-team-id"));
+        if (!team) return;
+        var player = team.players.filter(function (p) { return p.id === el.getAttribute("data-player-id"); })[0];
+        if (!player) return;
+        var field = el.getAttribute("data-field");
+        if (field === "pname") player.name = el.value;
+        else if (field === "number") player.number = Number(el.value);
+        else if (field === "goals") player.goals = Number(el.value);
+        scheduleSave();
+      });
+    });
+  }
+
+  function onToggleEdit() {
+    if (state.editMode) { state.editMode = false; render(); return; }
+    var configured = window.EDIT_PASSWORD && window.EDIT_PASSWORD !== "BURAYA_SIFREN";
+    if (!configured) { state.editMode = true; render(); return; }
+    var entered = window.prompt("Düzenleme şifresi:");
+    if (entered === null) return;
+    if (entered === window.EDIT_PASSWORD) { state.editMode = true; render(); }
+    else window.alert("Şifre yanlış.");
+  }
+
+  function onAddMatch() {
+    if (state.data.teams.length < 2) { window.alert("Önce en az 2 takım eklemelisin."); return; }
+    var weeks = state.data.matches.map(function (m) { return m.week; });
+    var maxWeek = weeks.length ? Math.max.apply(null, weeks) : 0;
+    state.data.matches.push({
+      id: uid("m"), week: maxWeek + 1, date: new Date().toISOString().slice(0, 10),
+      homeTeamId: state.data.teams[0].id, awayTeamId: state.data.teams[1].id,
+      homeScore: null, awayScore: null, played: false,
+    });
+    scheduleSave(); render();
+  }
+
+  function onDeleteMatch(id) {
+    state.data.matches = state.data.matches.filter(function (m) { return m.id !== id; });
+    scheduleSave(); render();
+  }
+
+  function onAddTeam() {
+    var color = TEAM_COLORS[state.data.teams.length % TEAM_COLORS.length];
+    var newTeam = { id: uid("t"), name: "Yeni Takım", color: color, players: [] };
+    state.data.teams.push(newTeam);
+    state.openTeamId = newTeam.id;
+    scheduleSave(); render();
+  }
+
+  function onDeleteTeam(id) {
+    state.data.teams = state.data.teams.filter(function (t) { return t.id !== id; });
+    state.data.matches = state.data.matches.filter(function (m) { return m.homeTeamId !== id && m.awayTeamId !== id; });
+    if (state.openTeamId === id) state.openTeamId = null;
+    scheduleSave(); render();
+  }
+
+  function onAddPlayer(teamId) {
+    var team = findTeam(teamId);
+    if (!team) return;
+    team.players.push({ id: uid("p"), name: "Yeni Oyuncu", number: team.players.length + 1, goals: 0 });
+    scheduleSave(); render();
+  }
+
+  function onDeletePlayer(teamId, playerId) {
+    var team = findTeam(teamId);
+    if (!team) return;
+    team.players = team.players.filter(function (p) { return p.id !== playerId; });
+    scheduleSave(); render();
+  }
+
+  /* ---------------- Başlangıç ---------------- */
+
+  function init() {
+    if (!supabaseConfigured()) {
+      state.configOk = false;
+      state.data = seedData();
+      render();
+      return;
+    }
+    loadRemoteData().then(function (remote) {
+      if (remote) {
+        state.data = remote;
+      } else {
+        state.data = seedData();
+        saveRemoteData(state.data).catch(function () {});
+      }
+      render();
+    }).catch(function () {
+      state.configOk = false;
+      state.data = seedData();
+      render();
+    });
+  }
+
+  init();
+})();
+</script>
+</body>
+</html>
